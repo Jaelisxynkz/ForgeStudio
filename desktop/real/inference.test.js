@@ -9,7 +9,7 @@ const { OP_TYPES } = require('../src/core/protocol');
 const store = require('../src/core/store');
 
 const ENABLED = process.env.FORGE_REAL_OLLAMA === '1';
-const MODEL = process.env.FORGE_REAL_MODEL || 'qwen2.5-coder:0.5b';
+const MODEL = process.env.FORGE_REAL_MODEL || 'qwen2.5-coder:1.5b';
 
 test('a real model downloaded through Ollama answers a real build request', { skip: ENABLED ? false : 'set FORGE_REAL_OLLAMA=1 to run against a real Ollama', timeout: 20 * 60 * 1000 }, async () => {
   const ollama = createOllama();

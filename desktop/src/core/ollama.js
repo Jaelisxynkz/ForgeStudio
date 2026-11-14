@@ -76,7 +76,8 @@ function createOllama({ base = 'http://127.0.0.1:11434', fetchImpl = fetch } = {
     if (!res.ok) throw await failure(res);
   }
 
-  // One non-streamed answer constrained to a JSON schema.
+  // One answer constrained to a JSON schema. It is streamed, so a slow model on a modest computer is never cut off
+  // by a connection timeout while it thinks, and capped, so a model that will not stop cannot run forever.
   async function chatJson({ model, prompt, schema }) {
     const res = await fetchImpl(base + '/api/chat', {
       method: 'POST',
@@ -84,14 +85,32 @@ function createOllama({ base = 'http://127.0.0.1:11434', fetchImpl = fetch } = {
       body: JSON.stringify({
         model: checkName(model),
         messages: [{ role: 'user', content: prompt }],
-        stream: false,
+        stream: true,
         format: schema,
-        options: { temperature: 0.2, num_ctx: 8192 },
+        options: { temperature: 0.2, num_ctx: 8192, num_predict: 4096 },
       }),
     });
     if (!res.ok) throw await failure(res);
-    const data = await res.json();
-    const content = data && data.message && data.message.content;
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let content = '';
+    let finished = '';
+    const read = (line) => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line);
+      if (event.error) throw new Error('Ollama: ' + event.error);
+      if (event.message && typeof event.message.content === 'string') content += event.message.content;
+      if (event.done) finished = String(event.done_reason || 'stop');
+    };
+    for await (const chunk of res.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      lines.forEach(read);
+    }
+    read(buffer);
+    if (!finished) throw new Error('Ollama stopped before the answer was complete. Try again.');
+    if (finished === 'length') throw new Error('The answer was too long for this model and was cut off. Ask for a smaller change or pick a larger model.');
     let parsed = null;
     try { parsed = JSON.parse(content); } catch (error) { parsed = null; }
     if (!parsed || typeof parsed !== 'object') throw new Error('The model did not return a usable answer. Try again or pick a larger model.');

@@ -54,19 +54,35 @@ test('download and removal errors from Ollama are passed on', async () => {
   await server.close();
 });
 
-test('an answer is requested with the schema and must be usable JSON', async () => {
+test('an answer is streamed, requested with the schema, and must be complete, usable JSON', async () => {
   let sent = null;
-  let content = JSON.stringify({ reply: 'Will add a part', plan: ['Add part'], operations: [] });
+  let events = [];
   const server = await fakeOllama({
-    'POST /api/chat': (body, res) => { sent = body; json(res, 200, { message: { role: 'assistant', content } }); },
+    'POST /api/chat': (body, res) => {
+      sent = body;
+      res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
+      res.end(events.map((event) => JSON.stringify(event)).join('\n') + '\n');
+    },
   });
   const ollama = createOllama({ base: server.base });
   const schema = { type: 'object' };
-  assert.deepEqual(await ollama.chatJson({ model: 'qwen2.5-coder:3b', prompt: 'hello', schema }), { reply: 'Will add a part', plan: ['Add part'], operations: [] });
-  assert.equal(sent.stream, false);
+  const ask = () => ollama.chatJson({ model: 'qwen2.5-coder:3b', prompt: 'hello', schema });
+  const answer = JSON.stringify({ reply: 'Will add a part', plan: ['Add part'], operations: [] });
+
+  events = [{ message: { content: answer.slice(0, 12) } }, { message: { content: answer.slice(12) } }, { message: { content: '' }, done: true, done_reason: 'stop' }];
+  assert.deepEqual(await ask(), { reply: 'Will add a part', plan: ['Add part'], operations: [] }, 'the pieces are joined into one answer');
+  assert.equal(sent.stream, true, 'streamed, so a slow model is not cut off by a connection timeout');
+  assert.equal(sent.options.num_predict, 4096, 'capped, so a model that will not stop cannot run forever');
   assert.deepEqual(sent.format, schema);
   assert.equal(sent.messages[0].content, 'hello');
-  content = 'Sure! Here is how you would do it...';
-  await assert.rejects(ollama.chatJson({ model: 'qwen2.5-coder:3b', prompt: 'hello', schema }), /did not return a usable answer/);
+
+  events = [{ message: { content: 'Sure! Here is how you would do it...' } }, { done: true, done_reason: 'stop' }];
+  await assert.rejects(ask(), /did not return a usable answer/);
+  events = [{ message: { content: answer.slice(0, 12) } }, { done: true, done_reason: 'length' }];
+  await assert.rejects(ask(), /cut off/);
+  events = [{ message: { content: answer } }];
+  await assert.rejects(ask(), /before the answer was complete/);
+  events = [{ error: 'model requires more system memory' }];
+  await assert.rejects(ask(), /more system memory/);
   await server.close();
 });
