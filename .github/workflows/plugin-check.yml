@@ -1,0 +1,41 @@
+name: Plugin check
+
+on:
+  push:
+    paths:
+      - 'plugin/**'
+      - '.github/workflows/plugin-check.yml'
+  pull_request:
+    paths:
+      - 'plugin/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  luau:
+    name: Compile and analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the Luau compiler and analyzer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/luau" "$RUNNER_TEMP/lsp"
+          gh release download --repo luau-lang/luau --pattern luau-ubuntu.zip --dir "$RUNNER_TEMP/luau"
+          unzip -q "$RUNNER_TEMP/luau/luau-ubuntu.zip" -d "$RUNNER_TEMP/luau"
+          gh release download --repo JohnnyMorganz/luau-lsp --pattern luau-lsp-linux-x86_64.zip --dir "$RUNNER_TEMP/lsp"
+          unzip -q "$RUNNER_TEMP/lsp/luau-lsp-linux-x86_64.zip" -d "$RUNNER_TEMP/lsp"
+          curl -fsSL -o "$RUNNER_TEMP/lsp/globalTypes.d.luau" https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/globalTypes.d.luau
+          chmod +x "$RUNNER_TEMP/luau/luau-compile" "$RUNNER_TEMP/lsp/luau-lsp"
+
+      - name: Compile with the official Luau compiler
+        run: |
+          "$RUNNER_TEMP/luau/luau-compile" --binary plugin/ForgeStudio.plugin.luau > /dev/null
+
+      - name: Analyze against the Roblox API
+        run: |
+          "$RUNNER_TEMP/lsp/luau-lsp" analyze --definitions="$RUNNER_TEMP/lsp/globalTypes.d.luau" plugin/ForgeStudio.plugin.luau
