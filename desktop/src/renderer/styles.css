@@ -1,0 +1,90 @@
+:root {
+  --bg: #090a0f; --card: #10121a; --raised: #171a24; --border: #262a38;
+  --text: #f5f6fa; --muted: #9299ad; --primary: #8465ff; --blue: #5d9dff;
+  --green: #65e6b1; --amber: #f5c26b; --red: #ff7878;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; background: var(--bg); color: var(--text); font: 14px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif; }
+h1 { margin: 4px 0 0; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+h2 { margin: 32px 0 12px; font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.good { color: var(--green); }
+.warn { color: var(--amber); }
+.bad { color: var(--red); }
+.mono, pre, .code { font-family: Consolas, "Cascadia Mono", Menlo, monospace; }
+.eyebrow { font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--primary); }
+
+aside { width: 220px; flex: none; display: flex; flex-direction: column; padding: 22px 14px; background: var(--card); border-right: 1px solid var(--border); }
+.brand { padding: 0 10px 22px; font-size: 16px; font-weight: 600; }
+.brand span { color: var(--primary); }
+nav { display: flex; flex-direction: column; gap: 4px; }
+nav button { text-align: left; background: none; border: 0; color: var(--muted); padding: 9px 10px; }
+nav button:hover { color: var(--text); background: var(--raised); }
+nav button.active { color: var(--text); background: var(--raised); }
+.status { margin-top: auto; padding: 0 10px; display: grid; gap: 8px; font-size: 12px; color: var(--muted); }
+.dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #4a5068; }
+.dot.on { background: var(--green); }
+.dot.warn { background: var(--amber); }
+
+main { flex: 1; min-width: 0; display: flex; }
+section { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 28px 34px; }
+section.scroll { display: block; overflow-y: auto; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+
+button, select, input, textarea { font: inherit; color: var(--text); border-radius: 8px; }
+button { cursor: pointer; padding: 8px 14px; background: var(--raised); border: 1px solid var(--border); }
+button:hover { border-color: #3a4057; }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary { background: var(--primary); border-color: var(--primary); font-weight: 600; }
+button.link { padding: 0; margin-top: 6px; background: none; border: 0; color: var(--blue); font-size: 12px; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+select, input, textarea { background: var(--raised); border: 1px solid var(--border); padding: 8px 10px; }
+select { margin-left: 8px; }
+textarea { width: 100%; resize: none; }
+input { flex: 1; min-width: 0; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.notice { margin-bottom: 8px; padding: 10px 14px; border: 1px solid #4a3f1f; border-radius: 8px; background: #1c1810; color: var(--amber); font-size: 13px; }
+#runs { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 4px 4px 16px 0; }
+.empty { margin: auto; max-width: 420px; text-align: center; }
+#composer { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+.card, .run, .item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.card { padding: 18px; display: grid; gap: 10px; justify-items: start; margin-top: 14px; }
+.run { padding: 18px; display: grid; gap: 12px; }
+.run-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.badge { padding: 3px 10px; border-radius: 999px; font-size: 12px; background: var(--raised); color: var(--muted); }
+.badge.awaiting_approval { color: var(--amber); }
+.badge.queued, .badge.running { color: var(--blue); }
+.badge.completed { color: var(--green); }
+.badge.failed { color: var(--red); }
+.prompt { font-weight: 600; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply { color: #c9cee0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.plan { margin: 0; padding-left: 20px; color: var(--muted); }
+.ops { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.op { display: flex; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--border); }
+.op:first-child { border-top: 0; }
+.op-type { width: 58px; flex: none; font: 11px Consolas, monospace; text-transform: uppercase; letter-spacing: 0.08em; padding-top: 2px; }
+.op-type.create { color: var(--green); }
+.op-type.script { color: var(--blue); }
+.op-type.set { color: var(--primary); }
+.op-type.destroy { color: var(--red); }
+.op-body { min-width: 0; flex: 1; display: grid; gap: 3px; justify-items: start; overflow-wrap: anywhere; }
+pre { width: 100%; max-height: 280px; overflow: auto; margin: 6px 0 0; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 12px; }
+.actions { display: flex; gap: 8px; }
+
+.item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; margin-bottom: 8px; }
+.item > div:first-child { min-width: 0; }
+.item .actions { flex: none; align-items: center; }
+.step { display: flex; gap: 16px; padding: 18px; margin-top: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.step-number { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--raised); color: var(--primary); font-weight: 600; }
+.step-body { display: grid; gap: 10px; justify-items: start; min-width: 0; overflow-wrap: anywhere; }
+.step-body h3 { margin: 2px 0 0; font-size: 15px; font-weight: 600; }
+.code { font-size: 28px; letter-spacing: 0.28em; padding: 10px 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; user-select: text; }
+.tree, .tree ul { list-style: none; margin: 0; padding-left: 18px; }
+.tree { padding: 14px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.tree li { padding: 2px 0; }

@@ -1,0 +1,50 @@
+{
+  "name": "forgestudio-desktop",
+  "productName": "ForgeStudio",
+  "version": "0.1.0",
+  "description": "ForgeStudio desktop app: local AI models and a local link to Roblox Studio",
+  "author": "ForgeStudio",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.2.0",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "studio.forge.desktop",
+    "productName": "ForgeStudio",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../plugin/ForgeStudio.plugin.luau",
+        "to": "plugin/ForgeStudio.plugin.luau"
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "ForgeStudio-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'">
+  <title>ForgeStudio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside>
+    <p class="brand">Forge<span>Studio</span></p>
+    <nav>
+      <button data-tab="build" class="active">Build</button>
+      <button data-tab="models">Models</button>
+      <button data-tab="studio">Roblox Studio</button>
+    </nav>
+    <div class="status">
+      <p><span id="dot-studio" class="dot off"></span><span id="txt-studio"></span></p>
+      <p><span id="dot-ollama" class="dot off"></span><span id="txt-ollama"></span></p>
+      <p id="version" class="muted small"></p>
+    </div>
+  </aside>
+  <main>
+    <section id="view-build">
+      <header>
+        <div>
+          <p class="eyebrow">Runs on this computer</p>
+          <h1>Build</h1>
+        </div>
+        <label class="muted small">Permission
+          <select id="permission">
+            <option value="review">Review every run</option>
+            <option value="automatic">Run automatically, except removals</option>
+          </select>
+        </label>
+      </header>
+      <div id="build-notices"></div>
+      <div id="runs"></div>
+      <form id="composer">
+        <textarea id="prompt" maxlength="2000" rows="3" placeholder="Describe what to build in your place"></textarea>
+        <div class="row">
+          <span id="composer-note" class="muted small"></span>
+          <button id="send" class="primary" type="submit">Send to agent</button>
+        </div>
+      </form>
+    </section>
+    <section id="view-models" class="scroll" hidden>
+      <p class="eyebrow">Free and open source</p>
+      <h1>Models</h1>
+      <div id="hardware"></div>
+      <div id="ollama-box"></div>
+      <h2>Installed</h2>
+      <div id="installed"></div>
+      <h2>Suggested coding models</h2>
+      <div id="catalog"></div>
+      <h2>Download another model</h2>
+      <form id="pull-form" class="row">
+        <input id="pull-name" maxlength="180" placeholder="A model name from the Ollama library, for example deepseek-coder-v2:16b">
+        <button type="submit">Download</button>
+      </form>
+      <div id="pulling"></div>
+      <p id="models-error" class="bad small"></p>
+    </section>
+    <section id="view-studio" class="scroll" hidden>
+      <p class="eyebrow">Local link, no cloud</p>
+      <h1>Roblox Studio</h1>
+      <div id="studio-steps"></div>
+      <h2>Place contents</h2>
+      <div id="tree"></div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+name: Desktop app
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'desktop/**'
+      - 'plugin/**'
+      - '.github/workflows/desktop.yml'
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'plugin/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run the tests
+        working-directory: desktop
+        run: node --test
+
+  windows:
+    name: Windows installer
+    needs: test
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install build tools
+        run: npm install --no-audit --no-fund
+      - name: Build the installer
+        run: npx electron-builder --win nsis --publish never
+      - name: Start the built app and check it is alive
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'smoke.txt'
+          $env:FORGE_SMOKE_OUT = $out
+          $app = Start-Process -FilePath 'dist\win-unpacked\ForgeStudio.exe' -ArgumentList '--smoke' -PassThru
+          $null = $app.Handle
+          if (-not $app.WaitForExit(120000)) { $app.Kill(); Write-Error 'The app did not finish its self-check in time'; exit 1 }
+          if (Test-Path $out) { Get-Content $out } else { Write-Error 'The app wrote no self-check report'; exit 1 }
+          if ($app.ExitCode -ne 0) { Write-Error "Self-check failed with exit code $($app.ExitCode)"; exit 1 }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ForgeStudio-Windows
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $installer = (Get-ChildItem 'dist\*.exe' | Select-Object -First 1).FullName
+          gh release create $env:GITHUB_REF_NAME $installer --title "ForgeStudio $env:GITHUB_REF_NAME" --prerelease --generate-notes
