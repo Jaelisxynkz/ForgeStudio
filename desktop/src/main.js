@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, safeStorage } = require('electron');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -9,6 +9,7 @@ const { runAgent } = require('./core/agent');
 const { recommend } = require('./core/hardware');
 const { pluginsDir, installPlugin } = require('./core/plugin');
 const store = require('./core/store');
+const { createAccount } = require('./core/account');
 
 // Fixed, because the address is written into the plugin file that Studio loads.
 const PORT = 47771;
@@ -27,6 +28,7 @@ if (SMOKE) {
 const ollama = createOllama();
 let win = null;
 let bridge = null;
+let account = null;
 let state = null;
 let bridgeError = '';
 let saveTimer = null;
@@ -41,7 +43,8 @@ function view() {
     place: state.place,
     lastSeen: state.lastSeen,
     tree: state.tree,
-    runs: state.runs.slice(-50),
+    runs: (account.runs() || state.runs.filter((run) => !run.remote)).slice(-50),
+    account: account.view(),
     settings: state.settings,
     pairing: bridge.getPairing(),
     pluginsDir: pluginsDir(),
@@ -94,11 +97,16 @@ function registerIpc() {
     if (!request || request.length > 2000) throw new Error('Write a request of up to 2000 characters');
     if (!state.settings.model) throw new Error('Choose a model on the Models page first');
     if (!(await ollama.status()).running) throw new Error('Ollama is not running on this computer');
+    if (account.active()) return account.send(request);
     const result = await runAgent({ ollama, model: state.settings.model, state, prompt: request });
     return bridge.addRun({ ...result, permission: state.settings.permission });
   });
-  on('run:approve', (id) => bridge.approve(id));
-  on('run:cancel', (id) => bridge.cancel(id));
+  on('run:approve', (id) => (account.active() ? account.decide(String(id), 'approve') : bridge.approve(id)));
+  on('run:cancel', (id) => (account.active() ? account.decide(String(id), 'cancel') : bridge.cancel(id)));
+  on('account:sign-in', () => account.signIn());
+  on('account:open', () => account.openApproval());
+  on('account:sign-out', () => account.signOut());
+  on('account:project', (id) => account.chooseProject(typeof id === 'string' ? id : ''));
 }
 
 function createWindow() {
@@ -132,12 +140,24 @@ async function smoke() {
     if (!ready) await new Promise((resolve) => setTimeout(resolve, 500));
   }
   check('interface rendered', ready === true);
+  check('starts signed out, with nothing sent to ForgeStudio', view().account.signedIn === false);
   return lines;
 }
 
 async function start() {
   state = store.load(stateFile());
-  bridge = createBridge({ state, onChange: changed });
+  bridge = createBridge({ state, onChange: changed, onReport: (run) => account.report(run) });
+  // The account token is encrypted with the operating system's own key store whenever one is available.
+  const vault = {
+    seal: (value) => (safeStorage.isEncryptionAvailable() ? 'enc:' + safeStorage.encryptString(value).toString('base64') : 'raw:' + value),
+    open: (value) => (value.startsWith('enc:') ? safeStorage.decryptString(Buffer.from(value.slice(4), 'base64')) : value.slice(4)),
+  };
+  account = createAccount({
+    state, bridge, ollama, vault, onChange: changed,
+    openExternal: (url) => shell.openExternal(url),
+    studioOnline: () => Boolean(state.tokenHash && state.lastSeen && Date.now() - Date.parse(state.lastSeen) < 20000),
+    device: { name: os.hostname(), platform: process.platform, appVersion: app.getVersion() },
+  });
   try {
     await bridge.listen(PORT);
   } catch (error) {
@@ -147,7 +167,7 @@ async function start() {
   }
   registerIpc();
   await createWindow();
-  if (!SMOKE) return;
+  if (!SMOKE) return account.start();
   let lines;
   try { lines = await smoke(); } catch (error) { lines = ['FAIL smoke check crashed: ' + error.message]; }
   if (process.env.FORGE_SMOKE_OUT) fs.writeFileSync(process.env.FORGE_SMOKE_OUT, lines.join('\n') + '\n');

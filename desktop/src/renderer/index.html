@@ -13,6 +13,7 @@
       <button data-tab="build" class="active">Build</button>
       <button data-tab="models">Models</button>
       <button data-tab="studio">Roblox Studio</button>
+      <button data-tab="account">Account</button>
     </nav>
     <div class="status">
       <p><span id="dot-studio" class="dot off"></span><span id="txt-studio"></span></p>
@@ -24,7 +25,7 @@
     <section id="view-build">
       <header>
         <div>
-          <p class="eyebrow">Runs on this computer</p>
+          <p id="build-eyebrow" class="eyebrow">Runs on this computer</p>
           <h1>Build</h1>
         </div>
         <label class="muted small">Permission
@@ -67,6 +68,11 @@
       <div id="studio-steps"></div>
       <h2>Place contents</h2>
       <div id="tree"></div>
+    </section>
+    <section id="view-account" class="scroll" hidden>
+      <p class="eyebrow">Shared with the website</p>
+      <h1>Account</h1>
+      <div id="account-box"></div>
     </section>
   </main>
   <script src="app.js"></script>

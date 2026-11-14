@@ -34,9 +34,31 @@ jobs:
         working-directory: desktop
         run: node --test
 
+  real-model:
+    name: Real local model
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+      - name: Make sure Ollama is running
+        run: |
+          curl -sf http://127.0.0.1:11434/api/version || (nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:11434/api/version && exit 0; sleep 2; done
+          echo "Ollama did not start"; exit 1
+      - name: Download a real model and get a real answer from it
+        working-directory: desktop
+        env:
+          FORGE_REAL_OLLAMA: '1'
+        run: node --test real/inference.test.js
+
   windows:
     name: Windows installer
-    needs: test
+    needs: [test, real-model]
     runs-on: windows-latest
     permissions:
       contents: write

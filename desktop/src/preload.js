@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld('forge', {
   runAgent: call('agent:run'),
   approve: call('run:approve'),
   cancel: call('run:cancel'),
+  signIn: call('account:sign-in'),
+  openApproval: call('account:open'),
+  signOut: call('account:sign-out'),
+  chooseProject: call('account:project'),
   onState: (listener) => { ipcRenderer.on('state', (event, value) => listener(value)); },
   onPull: (listener) => { ipcRenderer.on('pull', (event, value) => listener(value)); },
 });

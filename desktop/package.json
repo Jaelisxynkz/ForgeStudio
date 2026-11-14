@@ -1,7 +1,7 @@
 {
   "name": "forgestudio-desktop",
   "productName": "ForgeStudio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "ForgeStudio desktop app: local AI models and a local link to Roblox Studio",
   "author": "ForgeStudio",
   "private": true,

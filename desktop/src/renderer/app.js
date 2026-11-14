@@ -8,9 +8,10 @@
   const pulls = {};
   const openSource = new Set();
   const seen = {};
-  const ui = { tab: 'build', sending: false, runCount: 0, buildError: '', modelsError: '', studioMessage: '', studioError: '' };
+  const ui = { tab: 'build', sending: false, runCount: 0, buildError: '', modelsError: '', studioMessage: '', studioError: '', accountError: '' };
 
   const STATUS = {
+    waiting_for_desktop: 'Waiting for a desktop app', generating: 'Planning on this computer',
     awaiting_approval: 'Waiting for your approval', queued: 'Waiting for Studio', running: 'Running in Studio',
     completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled', answered: 'Answered',
   };
@@ -126,6 +127,10 @@
     else if (!model) notices.push('Choose a model on the Models page before sending a request.');
     else if (!installed(model)) notices.push('The chosen model, ' + model + ', is not installed any more. Pick another on the Models page.');
     if (!state.paired) notices.push('Roblox Studio is not paired yet. Open the Roblox Studio page to connect it.');
+    if (state.account.signedIn && !state.account.projectId) notices.push('Choose a project on the Account page to share this conversation with the website.');
+    if (state.account.error) notices.push(state.account.error);
+    const project = state.account.projects.find((p) => p.id === state.account.projectId);
+    $('build-eyebrow').textContent = project ? 'Shared project · ' + project.name : 'Runs on this computer';
     draw('build-notices', notices, () => notices.map((text) => h('p', { class: 'notice', text })));
 
     draw('runs', [state.runs, Array.from(openSource), online()], () => (state.runs.length > 0
@@ -241,14 +246,50 @@
       : h('p', { class: 'muted', text: 'Nothing reported yet. The plugin sends the contents of your place shortly after pairing.' })));
   }
 
+  function accountAction(promise) {
+    ui.accountError = '';
+    promise.catch((error) => { ui.accountError = message(error); }).then(render);
+  }
+
+  function drawAccount() {
+    const account = state.account;
+    draw('account-box', [account, ui.accountError], () => (account.signedIn ? [
+      h('p', { class: 'good', text: 'Signed in' + (account.name ? ' as ' + account.name : '') + '.' }),
+      h('p', { class: 'muted small', text: 'Requests typed on the website for a project set to plan on your computer are collected by this app and answered by your chosen model.' }),
+      h('h2', { text: 'Projects' }),
+      account.projects.length === 0 && h('p', { class: 'muted', text: 'No projects yet. Create one on the ForgeStudio website and it appears here.' }),
+      account.projects.map((p) => h('div', { class: 'item' },
+        h('div', null,
+          h('p', { text: p.name }),
+          h('p', { class: 'muted small', text: p.planning === 'local' ? 'Website requests are planned on your computer' : 'Website requests are planned by the hosted model' })),
+        h('div', { class: 'actions' }, p.id === account.projectId
+          ? h('span', { class: 'good small', text: 'Open on the Build page' })
+          : h('button', { type: 'button', text: 'Open', onclick: () => accountAction(api.chooseProject(p.id)) })))),
+      account.projectId && h('button', { type: 'button', text: 'Close the shared project', onclick: () => accountAction(api.chooseProject('')) }),
+      h('h2', { text: 'This computer' }),
+      h('button', { type: 'button', text: 'Sign out', onclick: () => accountAction(api.signOut()) }),
+      ui.accountError && h('p', { class: 'bad small', text: ui.accountError }),
+    ] : [
+      h('p', { class: 'muted', text: 'Sign in to share projects and conversations with the ForgeStudio website, and to let requests typed on the website be planned by a model on this computer. Without signing in, everything stays on this computer.' }),
+      account.pending && h('p', { text: 'Approve this code in the browser window that just opened:' }),
+      account.pending && h('p', { class: 'code', text: account.pending.userCode }),
+      account.pending && h('p', { class: 'muted small', text: 'Approve it only while signed in to your own ForgeStudio account. It expires at ' + time(account.pending.expires) + '.' }),
+      account.pending
+        ? h('button', { type: 'button', text: 'Open the approval page again', onclick: () => accountAction(api.openApproval()) })
+        : h('button', { class: 'primary', type: 'button', text: 'Sign in', onclick: () => accountAction(api.signIn()) }),
+      (ui.accountError || account.error) && h('p', { class: 'bad small', text: ui.accountError || account.error }),
+    ]));
+  }
+
   function render() {
     if (!state || !hardware) return;
-    for (const name of ['build', 'models', 'studio']) $('view-' + name).hidden = ui.tab !== name;
+    for (const name of ['build', 'models', 'studio', 'account']) $('view-' + name).hidden = ui.tab !== name;
     document.querySelectorAll('nav button').forEach((button) => button.classList.toggle('active', button.dataset.tab === ui.tab));
     drawStatus();
     drawBuild();
     drawModels();
     drawStudio();
+    drawAccount();
   }
 
   function refreshOllama() {

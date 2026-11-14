@@ -4,7 +4,7 @@
 
 const http = require('http');
 const crypto = require('crypto');
-const { PROTOCOL, cleanTree } = require('./protocol');
+const { PROTOCOL, cleanTree, cleanOperations } = require('./protocol');
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_MS = 10 * 60 * 1000;
@@ -19,7 +19,7 @@ const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const text = (value, max) => (typeof value === 'string' ? value.slice(0, max) : '');
 const same = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
-function createBridge({ state, onChange = () => {}, now = () => Date.now() }) {
+function createBridge({ state, onChange = () => {}, onReport = () => {}, now = () => Date.now() }) {
   let pairing = null;
   let server = null;
   const iso = () => new Date(now()).toISOString();
@@ -56,6 +56,20 @@ function createBridge({ state, onChange = () => {}, now = () => Date.now() }) {
       id: crypto.randomBytes(10).toString('hex'),
       prompt, reply, plan, operations, model: model || '', status,
       results: [], error: '', undoRecorded: false, createdAt: iso(), claimedAt: null, finishedAt: null,
+    };
+    state.runs.push(run);
+    if (state.runs.length > MAX_RUNS) state.runs.splice(0, state.runs.length - MAX_RUNS);
+    changed();
+    return run;
+  }
+
+  // A run approved in the shared account and handed to this computer to apply. The same id is never accepted twice,
+  // so a repeat after a reconnect cannot apply a run again.
+  function addRemote({ id, projectId, operations }) {
+    if (typeof id !== 'string' || !/^[A-Za-z0-9]{6,40}$/.test(id) || find(id)) return null;
+    const run = {
+      id, remote: true, projectId: text(projectId, 40), prompt: '', reply: '', plan: [], operations: cleanOperations(operations).operations, model: '',
+      status: 'queued', results: [], error: '', undoRecorded: false, createdAt: iso(), claimedAt: null, finishedAt: null,
     };
     state.runs.push(run);
     if (state.runs.length > MAX_RUNS) state.runs.splice(0, state.runs.length - MAX_RUNS);
@@ -126,6 +140,7 @@ function createBridge({ state, onChange = () => {}, now = () => Date.now() }) {
           run.status = 'failed';
           run.finishedAt = iso();
           run.error = STALE_ERROR;
+          if (run.remote) onReport(run);
         } else {
           busy = true;
         }
@@ -158,6 +173,7 @@ function createBridge({ state, onChange = () => {}, now = () => Date.now() }) {
       run.error = allOk ? '' : (results.length < expected ? 'Studio reported fewer results than operations.' : 'One or more operations failed in Studio.');
       saveTree(body.tree);
       changed();
+      if (run.remote) onReport(run);
       return { status: 200, json: { recorded: true } };
     }
 
@@ -199,7 +215,7 @@ function createBridge({ state, onChange = () => {}, now = () => Date.now() }) {
     return new Promise((resolve) => (server ? server.close(() => resolve()) : resolve()));
   }
 
-  return { newPairingCode, getPairing, unpair, addRun, approve, cancel, handle, listen, close };
+  return { newPairingCode, getPairing, unpair, addRun, addRemote, approve, cancel, handle, listen, close };
 }
 
 module.exports = { createBridge, STALE_MS, CODE_MS, CODE_MISSES, PROJECT_NAME };
